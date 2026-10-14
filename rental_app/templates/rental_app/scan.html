@@ -1,0 +1,142 @@
+{% extends 'rental_app/base.html' %}
+
+{% block content %}
+<div class="container py-4">
+  
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <!-- Upload Form Card -->
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h4 class="mb-0 fw-bold text-primary">
+            <i class="bi bi-camera me-2"></i>Automated Equipment Recognition
+          </h4>
+          <p class="text-muted small mb-0 mt-1">
+            Upload an image of the rental equipment. Our VGG16 model will identify it and match against stock (minimum confidence: 65%).
+          </p>
+        </div>
+        <div class="card-body p-4">
+
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-4">
+              <label for="equipment_image" class="form-label fw-semibold">Select Equipment Image</label>
+              <input class="form-control form-control-lg" type="file" id="equipment_image" name="equipment_image" accept="image/*" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+              <i class="bi bi-cpu me-2"></i>Analyze with Deep Learning Model
+            </button>
+          </form>
+
+        </div>
+      </div>
+
+      <!-- Recognition Results Card (renders when an image was analyzed) -->
+      {% if predicted_label %}
+      <div class="card shadow-sm border-0 mb-4 border-top border-4 border-success">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fw-bold text-success">
+            <i class="bi bi-check-circle-fill me-2"></i>Equipment Identified Successfully
+          </h5>
+          <span class="badge bg-success fs-6">{{ confidence }}</span>
+        </div>
+        <div class="card-body p-4">
+
+          <div class="row align-items-center mb-4">
+            {% if image_url %}
+            <div class="col-md-5 text-center mb-3 mb-md-0">
+              <img src="{{ image_url }}" alt="Uploaded Equipment" class="img-fluid rounded shadow-sm border" style="max-height: 220px; object-fit: contain;">
+              <small class="text-muted d-block mt-2">Uploaded Scan Image</small>
+            </div>
+            {% endif %}
+
+            <div class="col-md-{% if image_url %}7{% else %}12{% endif %}">
+              <div class="p-3 bg-light rounded">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Identified Class</span>
+                <h3 class="fw-bold text-dark text-capitalize mb-2">{{ predicted_label|cut:"_" }}</h3>
+                
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Model Confidence</span>
+                    <span class="fw-bold text-success">{{ confidence }}</span>
+                  </div>
+                  <div class="progress" style="height: 10px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ confidence_val }}%;"></div>
+                  </div>
+                </div>
+
+                <small class="text-muted">Status: <strong class="text-success">Accepted (&ge; 65% threshold)</strong></small>
+              </div>
+
+              <!-- Top-3 Predictions -->
+              {% if top_3 %}
+              <div class="mt-3">
+                <h6 class="fw-bold text-muted small text-uppercase mb-2">Top-3 Predictions</h6>
+                <ul class="list-group list-group-flush small">
+                  {% for item in top_3 %}
+                  <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1 bg-transparent">
+                    <span class="text-capitalize">{{ item.label|cut:"_" }}</span>
+                    <span class="badge bg-secondary rounded-pill">{{ item.confidence|floatformat:2 }}%</span>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Matching Inventory Stock -->
+          <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-boxes me-2"></i>Matching Available Units in Stock
+          </h5>
+
+          {% if matching_equipment %}
+            <div class="row g-3">
+              {% for eq in matching_equipment %}
+              <div class="col-md-6">
+                <div class="card h-100 border p-3">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <h6 class="fw-bold mb-1 text-dark">{{ eq.name }}</h6>
+                      <small class="text-muted">SN: {{ eq.serial_number|default:"N/A" }}</small>
+                    </div>
+                    <span class="badge bg-success">Available</span>
+                  </div>
+                  <div class="mt-auto d-flex justify-content-between align-items-center pt-2">
+                    <span class="fw-bold text-primary">NGN {{ eq.daily_rate|floatformat:2 }}/day</span>
+                    <a href="/book/{{ eq.id }}/?log_id={{ log.id }}" class="btn btn-sm btn-primary fw-semibold">
+                      Rent This Unit &rarr;
+                    </a>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert alert-warning mb-0">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              No available units found for <strong>{{ predicted_label|cut:"_" }}</strong>. All units may currently be rented or under maintenance.
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

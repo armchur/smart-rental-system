@@ -1,0 +1,81 @@
+{% extends "rental_app/base.html" %}
+
+{% block title %}Equipment Inventory Catalog | SmartRental AI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-grid-3x3-gap-fill me-2 text-primary"></i>Equipment Inventory
+        </h2>
+        <p class="text-muted mb-0">Browse all rental stock or filter by equipment category</p>
+    </div>
+    <!-- Direct link to scanner - never throws NoReverseMatch -->
+    <a href="/scan/" class="btn btn-primary px-3 py-2 shadow-sm">
+        <i class="bi bi-camera-fill me-2"></i>Scan Equipment with AI
+    </a>
+</div>
+
+<!-- Category Filter Pills -->
+<div class="mb-4">
+    <div class="d-flex flex-wrap gap-2">
+        <a href="/" class="btn btn-sm {% if not selected_category %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+            All Categories
+        </a>
+        {% for cat in categories %}
+            <a href="/?category={{ cat.id }}" 
+               class="btn btn-sm {% if selected_category == cat.id|stringformat:'s' %}btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+                {{ cat.name }}
+            </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Equipment Grid -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for item in equipment_list %}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-secondary">{{ item.category.name }}</span>
+                        {% if item.status == 'available' %}
+                            <span class="badge bg-success">Available</span>
+                        {% elif item.status == 'rented' %}
+                            <span class="badge bg-warning text-dark">Rented</span>
+                        {% else %}
+                            <span class="badge bg-danger">Maintenance</span>
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title fw-bold text-dark mb-1">{{ item.name }}</h5>
+                    {% if item.serial_number %}
+                        <small class="text-muted d-block mb-2">SN: {{ item.serial_number }}</small>
+                    {% endif %}
+                    <p class="card-text text-muted small">
+                        {{ item.description|default:"Reliable high-grade industrial equipment ready for deployment." }}
+                    </p>
+                </div>
+                <div class="card-footer bg-white border-0 pt-0 pb-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="fs-5 fw-bold text-primary">NGN {{ item.daily_rate }}</span>
+                        <small class="text-muted">/day</small>
+                    </div>
+                    {% if item.status == 'available' %}
+                        <a href="/book/{{ item.id }}/" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-cart-plus me-1"></i>Rent Unit
+                        </a>
+                    {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>Currently Rented</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-inbox text-muted display-4 d-block mb-3"></i>
+            <h5 class="text-muted">No equipment found in catalog.</h5>
+            <p class="text-muted small">Run <code>python seed_data.py</code> to populate initial stock.</p>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
